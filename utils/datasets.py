@@ -15,10 +15,11 @@ class Preprocessor(object):
     def __init__(self, img_size):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.resizer = ResizeLongestSide(img_size)
+        self.image_resizer = ResizeLongestSide(img_size)
+        self.mask_resizer  = ResizeLongestSide(256)
 
     def to_tensor(self, x):
-        x = torch.as_tensor(x, device=self.device)
+        x = torch.as_tensor(x, dtype=torch.float32, device=self.device)
         x = x.permute(2, 0, 1).contiguous()[:, :, :]
         return x
 
@@ -29,8 +30,8 @@ class Preprocessor(object):
         3) Permute channels to CxHxW and convert to tensor
         """
         # resizing
-        x = self.resizer.apply_image(image)
-        y = self.resizer.apply_boxes(bboxes, image.shape[:2])
+        x = self.image_resizer.apply_image(image)
+        y = self.image_resizer.apply_boxes(bboxes, image.shape[:2])
 
         # normalization
         x = (x - [[[123.675, 116.28, 103.53]]]) / [[[58.395, 57.12, 57.375]]]
@@ -71,11 +72,17 @@ class JsonDataset(Dataset):
         # load bboxes
         bboxes = np.array(mt.get_xyxys_from_mask(mask))
 
+        # TODO: only one bboxes are accepted
+        if len(bboxes) > 1:
+            bboxes = bboxes[:1]
+        else:
+            bboxes = np.array([[-1,-1,-1,-1]])
+
         # preprocess image and bboxes
         image_tensor, bboxes_tensor = self.preprocessor(image, bboxes)
 
         # preprocess mask
-        mask = (self.preprocessor.resizer.apply_image(mask.astype('uint8')) > 0).astype('uint8')
+        mask = (self.preprocessor.mask_resizer.apply_image(mask.astype('uint8')) > 0).astype('uint8')
         mask_tensor = self.preprocessor.to_tensor(mask[...,None].astype('float32'))
 
         return image_tensor, mask_tensor, bboxes_tensor
