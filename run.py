@@ -7,8 +7,8 @@ def parse_args():
     parse=argparse.ArgumentParser(description="mmse test the images or videos")
     parse.add_argument("--model_type",default='vit_h' ,help="vit_b, vit_l, vit_h, ascend in size")
     parse.add_argument("--checkpoint_path",default='model/sam_vit_h_4b8939.pth', help='model/sam_vit_b_01ec64.pth, model/sam_vit_l_0b3195.pth, model/sam_vit_h_4b8939.pth')
-    parse.add_argument("--img_path",default='/home/dongxinyu/Documents/data_manage/96gaodu/meidong0410/imgs/Meidong_SeaLand_Hmeidong_96_20230323163423-_20230323163611_image_0001.jpg')
-    parse.add_argument("--mode",default='everything', help='prompt, everything')
+    parse.add_argument("--img_path",default='/home/dongxinyu/nfs_243/Disk_4T/wai4/kyle_work/96gaodu/0414/images/Meidong_SeaLand_Hmeidong_96_20230323163423-_20230323163611_image_0002.jpg')
+    parse.add_argument("--mode",default='prompt', help='prompt, everything')
 
     args=parse.parse_args()
     return args

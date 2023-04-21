@@ -105,7 +105,10 @@ def _build_sam(
         pixel_std=[58.395, 57.12, 57.375],
     )
     if val:
+        print("SAM in eval mode")
         sam.eval()
+    else:
+        print("SAM in train mode")
     if checkpoint is not None:
         with open(checkpoint, "rb") as f:
             state_dict = torch.load(f)
