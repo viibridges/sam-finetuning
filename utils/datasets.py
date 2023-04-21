@@ -1,114 +1,95 @@
-import os
-import json
 import numpy as np
 import torch
-from torch import nn
-from torch.nn import functional as F
-
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
 import cv2
-from segment_anything import SamPredictor, SamAutomaticMaskGenerator, sam_model_registry
-from segment_anything.utils.transforms import ResizeLongestSide
-from segment_anything.modeling import Sam
 
-class Normalization(nn.Module):
+if __name__ == '__main__':
+    import sys
+    sys.path.append('.')
+
+from segment_anything.utils.transforms import ResizeLongestSide
+from torch.utils.data import Dataset
+
+import mtutils as mt
+
+class Preprocessor(object):
     def __init__(self, img_size):
         super().__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.resizer = ResizeLongestSide(img_size)
 
-        pixel_mean = [123.675, 116.28, 103.53]
-        pixel_std = [58.395, 57.12, 57.375]
-        self.register_buffer("pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False)
-        self.register_buffer("pixel_std", torch.Tensor(pixel_std).view(-1, 1, 1), False)
-        self.img_size = img_size
-        
-    def preprocess(self, x):
-        """Normalize pixel values and pad to a square input."""
-        # Normalize colors
-        x = (x - self.pixel_mean) / self.pixel_std
-
-        # Pad
-        h, w = x.shape[-2:]
-        padh = self.img_size - h
-        padw = self.img_size - w
-        x = F.pad(x, (0, padw, 0, padh))
-
+    def to_tensor(self, x):
+        x = torch.as_tensor(x, device=self.device)
+        x = x.permute(2, 0, 1).contiguous()[:, :, :]
         return x
 
-class MyDataset(Dataset):
-    def __init__(self, image_dir, annotation_dir, maskclass=None, img_size=None):
-        self.image_dir = image_dir
-        self.annotation_dir = annotation_dir
-        self.maskclass = maskclass
-        self.images = os.listdir(image_dir)
-        self.annotations = os.listdir(annotation_dir)
-        self.img_size = img_size
-        self.transform = ResizeLongestSide(self.img_size)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.norm = Normalization(self.img_size).to(self.device)
+    def __call__(self, image: np.array, bboxes: np.array) -> torch.Tensor:
+        """
+        1) Resize image
+        2) Normalize pixel values and pad to a square input
+        3) Permute channels to CxHxW and convert to tensor
+        """
+        # resizing
+        x = self.resizer.apply_image(image)
+        y = self.resizer.apply_boxes(bboxes, image.shape[:2])
+
+        # normalization
+        x = (x - [[[123.675, 116.28, 103.53]]]) / [[[58.395, 57.12, 57.375]]]
+
+        # to tensor
+        x = self.to_tensor(x)
+        y = torch.as_tensor(y, dtype=torch.float32, device=self.device)
+
+        return x, y
+
+
+class JsonDataset(Dataset):
+    def __init__(self, json_file, image_data_root, img_size=None):
+        self.data = mt.DataManager.load(json_file)
+        self.image_data_root = image_data_root
+
+        self.preprocessor = Preprocessor(img_size)
 
     def __len__(self):
-        return len(self.images)
+        return len(self.data)
 
     def __getitem__(self, index):
-        image_path = os.path.join(self.image_dir, self.images[index])
-        annotation_path = os.path.join(self.annotation_dir, self.annotations[index])
+        rec = self.data[index]
 
-        # Load image
-        ori_image = cv2.imread(image_path)
-        image = ori_image[..., ::-1] # bgr 2 rgb
+        # load image
+        image_path = mt.osp.join(self.image_data_root, rec['info']['image_path'])
+        image = mt.cv_rgb_imread(image_path)
 
-        image = self.transform.apply_image(image)
-        image = torch.as_tensor(image, device=self.device)
-        image = image.permute(2, 0, 1).contiguous()[:, :, :]
-        image = self.norm.preprocess(image)
+        # load mask
+        mask = np.zeros(image.shape[:2], dtype='bool')
+        for mpth in rec['info']['mask_path']:
+            m = cv2.imread(mt.osp.join(self.image_data_root, mpth), 0) > 0
+            mask = np.logical_or(mask, m)
 
-        # Load annotation
-        with open(annotation_path, 'r') as f:
-            data = json.load(f)
-        
-        # # Get image size
-        width, height = ori_image.shape[1], ori_image.shape[0]
-        # Create segmentation mask
-        mask = np.zeros((height, width), dtype=np.uint8)
+        # remove small blocks
+        mask = mt.connected_filter(mask, min_area=100)
 
-        for shape in data['shapes']:
-            label = shape['label']
-            if label in self.maskclass:
-                points = shape['points']
-                polygon = np.array(points, dtype=np.int32)
-                cv2.fillPoly(mask, [polygon], color=1)
+        # load bboxes
+        bboxes = np.array(mt.get_xyxys_from_mask(mask))
 
-        # # Convert the binary mask to a NumPy array
-        # mask_np = np.array(mask)*255
-        # # Save the mask as a JPEG file using OpenCV
-        # cv2.imwrite('mask.jpg', mask_np)
-        # print('mask saved')
+        # preprocess image and bboxes
+        image_tensor, bboxes_tensor = self.preprocessor(image, bboxes)
 
-        # mask to tensor
-        mask = torch.as_tensor(mask, device=self.device).float()
-        mask = mask[None, :, :] # torch.Size([1, 1, 1080, 1920])
-        
-        # # a box
-        # box_prompt = np.array(data['box_prompt'][0], dtype=np.int32)
-        # box_prompt = torch.as_tensor(box_prompt, device=self.device)
-        # print(prompts.shape)
-        # a box
-        box_prompt = np.array(data['box_prompt'][0], dtype=np.int32)
-        box_prompt = self.transform.apply_boxes(box_prompt, (height, width))
-        box_prompt = torch.as_tensor(box_prompt, dtype=torch.float, device=self.device).reshape(4)
-        return image, mask, box_prompt
-   
+        # preprocess mask
+        mask = (self.preprocessor.resizer.apply_image(mask.astype('uint8')) > 0).astype('uint8')
+        mask_tensor = self.preprocessor.to_tensor(mask[...,None].astype('float32'))
+
+        return image_tensor, mask_tensor, bboxes_tensor
+
+
 if __name__ == '__main__':
-    # Define image and annotation directories
-    image_dir = '/home/dongxinyu/project/sam-finetuning/demo/images'
-    annotation_dir = '/home/dongxinyu/project/sam-finetuning/demo/annotations'
+    image_data_root = '/workspace/dataSet/dataset/sam-finetuning/'
+    json_path = mt.osp.join(image_data_root, 'val.json')
+    dataset = JsonDataset(json_path, image_data_root, img_size=512)
+    for img, msk, prmpt in dataset:
+        mask = np.squeeze(msk.cpu().detach().numpy())
+        imag = img.cpu().detach().numpy()
+        bbox = prmpt.cpu().detach().numpy().tolist()
 
-    # Create dataset and dataloader
-    maskclass = ['container']
-    dataset = MyDataset(image_dir, annotation_dir,maskclass=maskclass,img_size = 1024)
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-
-    # Iterate over the DataLoader to get batches of data
-    for batch in dataloader:
-        print(batch)
+        mask = (mask*180).astype('uint8')
+        mask = mt.boxes_painter(mask, bbox, color=(255, 255, 255), line_thickness=1)
+        mt.PIS(imag[0], imag[1], imag[2], mask)
