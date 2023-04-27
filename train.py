@@ -32,8 +32,10 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num
             loss.backward()
             optimizer.step()
 
-            print('---loss {}---'.format(loss.item()))
-        torch.save(model.state_dict(), 'checkpoints/model_{}.pth'.format(epoch))
+            print('[{}/{}] loss: {}'.format(iter, len(train_dataloader), loss.item()))
+
+            if iter > 0 and iter % 1000 == 0:
+                torch.save(model.state_dict(), 'model_{}.pth'.format(iter))
 
 
 if __name__ == '__main__':

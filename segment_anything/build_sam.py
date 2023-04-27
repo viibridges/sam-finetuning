@@ -44,7 +44,7 @@ def build_sam_vit_b(checkpoint=None, val=False):
         encoder_num_heads=12,
         encoder_global_attn_indexes=[2, 5, 8, 11],
         checkpoint=checkpoint,
-        val=False
+        val=val
     )
 
 
