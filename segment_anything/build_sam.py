@@ -11,8 +11,9 @@ from functools import partial
 from .modeling import ImageEncoderViT, MaskDecoder, PromptEncoder, Sam, TwoWayTransformer
 
 
-def build_sam_vit_h(checkpoint=None, val=False):
+def build_sam_vit_h(image_size=1024, checkpoint=None, val=False):
     return _build_sam(
+        image_size=image_size,
         encoder_embed_dim=1280,
         encoder_depth=32,
         encoder_num_heads=16,
@@ -26,8 +27,9 @@ def build_sam_vit_h(checkpoint=None, val=False):
 build_sam = build_sam_vit_h
 
 
-def build_sam_vit_l(checkpoint=None, val=False):
+def build_sam_vit_l(image_size=1024, checkpoint=None, val=False):
     return _build_sam(
+        image_size=image_size,
         encoder_embed_dim=1024,
         encoder_depth=24,
         encoder_num_heads=16,
@@ -37,8 +39,9 @@ def build_sam_vit_l(checkpoint=None, val=False):
     )
 
 
-def build_sam_vit_b(checkpoint=None, val=False):
+def build_sam_vit_b(image_size=1024, checkpoint=None, val=False):
     return _build_sam(
+        image_size=image_size,
         encoder_embed_dim=768,
         encoder_depth=12,
         encoder_num_heads=12,
@@ -57,6 +60,7 @@ sam_model_registry = {
 
 
 def _build_sam(
+    image_size,
     encoder_embed_dim,
     encoder_depth,
     encoder_num_heads,
@@ -65,7 +69,6 @@ def _build_sam(
     val=False
 ):
     prompt_embed_dim = 256
-    image_size = 1024
     vit_patch_size = 16
     image_embedding_size = image_size // vit_patch_size
     sam = Sam(
@@ -112,5 +115,15 @@ def _build_sam(
     if checkpoint is not None:
         with open(checkpoint, "rb") as f:
             state_dict = torch.load(f)
-        sam.load_state_dict(state_dict)
+        if image_size == 1024:
+            sam.load_state_dict(state_dict)
+        else:
+            new_state_dict = dict()
+            for name, weights in state_dict.items():
+                if name.startswith('image_encoder') and 'pos_' in name:
+                    print("Skip unmatched weights:", name)
+                    continue
+                else:
+                    new_state_dict[name] = weights
+            sam.load_state_dict(new_state_dict, strict=False)
     return sam

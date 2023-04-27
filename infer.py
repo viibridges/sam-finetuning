@@ -8,17 +8,17 @@ if __name__ == '__main__':
     image_data_root = '/workspace/dataSet/dataset/sam-finetuning/'
     json_val   = mt.osp.join(image_data_root, 'val.json')
 
-    image_size = 1024
+    image_size = 256
 
     model_type = 'vit_b'  # vit_b, vit_l, vit_h, ascend in size
-    checkpoint = 'model_3000.pth'
+    checkpoint = 'model_epoch_1.pth'
 
     data_val  = JsonDataset(json_val, image_data_root, img_size=image_size)
     dataloader_val = torch.utils.data.DataLoader(data_val, batch_size=1, shuffle=False)
 
     # Set up model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = sam_model_registry[model_type](checkpoint=checkpoint, val=True).to(device)
+    model = sam_model_registry[model_type](image_size=image_size, checkpoint=checkpoint, val=True).to(device)
 
     for iter, (images, gt_masks, prompts) in enumerate(dataloader_val):  
         with torch.no_grad():
@@ -39,4 +39,4 @@ if __name__ == '__main__':
             )
 
             mask = np.squeeze(pred_masks[0].detach().cpu().numpy())
-            mt.PIS(mask)
+            mt.PIS(mask, norm_float=False)

@@ -34,8 +34,7 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num
 
             print('[{}/{}] loss: {}'.format(iter, len(train_dataloader), loss.item()))
 
-            if iter > 0 and iter % 1000 == 0:
-                torch.save(model.state_dict(), 'model_{}.pth'.format(iter))
+        torch.save(model.state_dict(), 'model_epoch_{}.pth'.format(epoch))
 
 
 if __name__ == '__main__':
@@ -44,8 +43,8 @@ if __name__ == '__main__':
     json_train = mt.osp.join(image_data_root, 'train.json')
     json_val   = mt.osp.join(image_data_root, 'val.json')
 
-    image_size = 1024
-    batch_size = 1
+    image_size = 256
+    batch_size = 64
 
     model_type = 'vit_b'  # vit_b, vit_l, vit_h, ascend in size
     checkpoint = mt.osp.join(image_data_root, 'checkpoints/sam_vit_b_01ec64.pth')
@@ -57,7 +56,7 @@ if __name__ == '__main__':
 
     # Set up model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = sam_model_registry[model_type](checkpoint=checkpoint, val=False).to(device)
+    model = sam_model_registry[model_type](image_size=image_size, checkpoint=checkpoint, val=False).to(device)
 
     # create optimizer
     optimizer = torch.optim.Adam(model.mask_decoder.parameters(),lr=1e-3)

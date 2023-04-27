@@ -16,7 +16,7 @@ class Preprocessor(object):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.image_resizer = ResizeLongestSide(img_size)
-        self.mask_resizer  = ResizeLongestSide(256)
+        self.mask_resizer  = ResizeLongestSide(img_size//4)
 
     def to_tensor(self, x):
         x = torch.as_tensor(x, dtype=torch.float32, device=self.device)
