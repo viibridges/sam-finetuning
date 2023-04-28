@@ -30,13 +30,16 @@ if __name__ == '__main__':
                 masks = None,
                 )
 
-            pred_masks, pred_ious = model.mask_decoder(
+            pred_masks_logits, pred_ious = model.mask_decoder(
                 image_embeddings=image_embedding,
                 image_pe=model.prompt_encoder.get_dense_pe(),
                 sparse_prompt_embeddings=sparse_embeddings,
                 dense_prompt_embeddings=dense_embeddings,
-                multimask_output=False,
+                multimask_output=True,
             )
+            pred_masks = torch.sigmoid(pred_masks_logits)
 
-            mask = np.squeeze(pred_masks[0].detach().cpu().numpy())
+            maxid = np.argmax(np.squeeze(pred_ious.detach().cpu().numpy()))
+            masks = pred_masks[0].detach().cpu().numpy()
+            mask = masks[maxid]
             mt.PIS(mask, norm_float=False)
