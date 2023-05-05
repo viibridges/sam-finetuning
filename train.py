@@ -69,8 +69,8 @@ if __name__ == '__main__':
 
     device = 'cuda:{}'.format(mt.get_single_gpu_id())
 
-    image_size = 512
-    batch_size = 64
+    image_size = 1024
+    batch_size = 8
 
     model_type = 'vit_b'  # vit_b, vit_l, vit_h, ascend in size
     checkpoint = mt.osp.join(image_data_root, 'checkpoints/sam_vit_b_01ec64.pth')
