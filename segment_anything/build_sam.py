@@ -8,10 +8,13 @@ import torch
 
 from functools import partial
 
-from .modeling import ImageEncoderViT, MaskDecoder, PromptEncoder, Sam, TwoWayTransformer
+from .modeling import ImageEncoderViT, PromptEncoder, Sam, TwoWayTransformer
+
+# from .modeling import MaskDecoder
+from .custom import MaskDecoder
 
 
-def build_sam_vit_h(image_size=1024, checkpoint=None, val=False):
+def build_sam_vit_h(image_size=1024, checkpoint=None, val=False, device='cpu'):
     return _build_sam(
         image_size=image_size,
         encoder_embed_dim=1280,
@@ -19,15 +22,15 @@ def build_sam_vit_h(image_size=1024, checkpoint=None, val=False):
         encoder_num_heads=16,
         encoder_global_attn_indexes=[7, 15, 23, 31],
         checkpoint=checkpoint,
-        val=False
-
+        val=False,
+        device='cpu'
     )
 
 
 build_sam = build_sam_vit_h
 
 
-def build_sam_vit_l(image_size=1024, checkpoint=None, val=False):
+def build_sam_vit_l(image_size=1024, checkpoint=None, val=False, device='cpu'):
     return _build_sam(
         image_size=image_size,
         encoder_embed_dim=1024,
@@ -35,11 +38,12 @@ def build_sam_vit_l(image_size=1024, checkpoint=None, val=False):
         encoder_num_heads=16,
         encoder_global_attn_indexes=[5, 11, 17, 23],
         checkpoint=checkpoint,
-        val=False
+        val=False,
+        device='cpu'
     )
 
 
-def build_sam_vit_b(image_size=1024, checkpoint=None, val=False):
+def build_sam_vit_b(image_size=1024, checkpoint=None, val=False, device='cpu'):
     return _build_sam(
         image_size=image_size,
         encoder_embed_dim=768,
@@ -47,7 +51,8 @@ def build_sam_vit_b(image_size=1024, checkpoint=None, val=False):
         encoder_num_heads=12,
         encoder_global_attn_indexes=[2, 5, 8, 11],
         checkpoint=checkpoint,
-        val=val
+        val=val,
+        device='cpu'
     )
 
 
@@ -66,7 +71,8 @@ def _build_sam(
     encoder_num_heads,
     encoder_global_attn_indexes,
     checkpoint=None,
-    val=False
+    val=False,
+    device='cpu'
 ):
     prompt_embed_dim = 256
     vit_patch_size = 16
@@ -114,8 +120,8 @@ def _build_sam(
         print("SAM in train mode")
     if checkpoint is not None:
         with open(checkpoint, "rb") as f:
-            state_dict = torch.load(f)
-        if image_size == 1024:
+            state_dict = torch.load(f, map_location=torch.device(device))
+        if image_size == 1024 or val:
             sam.load_state_dict(state_dict)
         else:
             new_state_dict = dict()
