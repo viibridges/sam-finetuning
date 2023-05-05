@@ -12,7 +12,7 @@ class MaskDecoder(nn.Module):
     def __init__(self,
                 transformer_dim,
                 activation: Type[nn.Module] = nn.GELU,
-                num_fg_classes = 1,
+                num_fg_classes = 2,
                 *args, **kwargs
         ) -> None:
         super().__init__()
@@ -23,7 +23,6 @@ class MaskDecoder(nn.Module):
             activation(),
             nn.ConvTranspose2d(transformer_dim // 4, transformer_dim // 8, kernel_size=2, stride=2),
             nn.Conv2d(transformer_dim // 8, self.num_fg_classes, kernel_size=1, stride=1),
-            activation(),
         )
 
     def forward(

@@ -5,6 +5,8 @@ from segment_anything.custom.datasets import *
 from segment_anything.custom.losses import *
 from segment_anything import sam_model_registry
 
+from config import cfg
+
 
 def validate_model(model, val_dataloader):
     model.eval()
@@ -17,10 +19,11 @@ def validate_model(model, val_dataloader):
                 image_embeddings=image_embedding,
                 original_size=images.shape[2:]
             )
-            preds = torch.sigmoid(logits)
+            preds = F.softmax(logits, dim=1)
+            preds = preds[:,1:2,:,:]  # get the fg mask
 
-            y_true = masks.view(-1).cpu().numpy()
-            y_pred = preds.view(-1).cpu().numpy()
+            y_true = masks.reshape(-1).cpu().numpy()
+            y_pred = preds.reshape(-1).cpu().numpy()
             ap = average_precision_score(y_true, y_pred)
 
             aps.append(ap)
@@ -40,8 +43,9 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num
                 image_embeddings=image_embedding,
                 original_size=images.shape[2:]
             )
+            pred_masks = F.softmax(pred_masks_logits, dim=1)
 
-            loss = loss_fn(pred_masks_logits, gt_masks)
+            loss = loss_fn(pred_masks, gt_masks)
 
             optimizer.zero_grad()
             loss.backward()
@@ -62,34 +66,21 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num
 
 
 if __name__ == '__main__':
-    # setup parameters
-    image_data_root = '/workspace/dataSet/dataset/sam-finetuning/'
-    json_train = mt.osp.join(image_data_root, 'train.json')
-    json_val   = mt.osp.join(image_data_root, 'val.json')
-
     device = 'cuda:{}'.format(mt.get_single_gpu_id())
 
-    image_size = 1024
-    batch_size = 8
-
-    model_type = 'vit_b'  # vit_b, vit_l, vit_h, ascend in size
-    checkpoint = mt.osp.join(image_data_root, 'checkpoints/sam_vit_b_01ec64.pth')
-
-    data_train = JsonDataset(json_train, image_data_root, img_size=image_size, device=device)
-    dataloader_train = torch.utils.data.DataLoader(data_train, batch_size=batch_size, shuffle=True)
-    data_val  = JsonDataset(json_train, image_data_root, img_size=image_size, device=device)
-    dataloader_val = torch.utils.data.DataLoader(data_val, batch_size=batch_size, shuffle=False)
+    data_train = JsonDataset(cfg.json_train, cfg.image_data_root, img_size=cfg.image_size, device=device)
+    dataloader_train = torch.utils.data.DataLoader(data_train, batch_size=cfg.batch_size, shuffle=True)
+    data_val  = JsonDataset(cfg.json_val, cfg.image_data_root, img_size=cfg.image_size, device=device)
+    dataloader_val = torch.utils.data.DataLoader(data_val, batch_size=cfg.batch_size, shuffle=False)
 
     # Set up model
-    model = sam_model_registry[model_type](image_size=image_size, checkpoint=checkpoint, val=False).to(device)
+    model = sam_model_registry[cfg.model_type](image_size=cfg.image_size, checkpoint=cfg.checkpoint, val=False).to(device)
 
     # create optimizer
-    optimizer = torch.optim.Adam(model.mask_decoder.parameters(),lr=1e-3)
+    optimizer = torch.optim.Adam(model.mask_decoder.parameters(), lr=1e-3)
 
     # loss function
-    loss_fn = FocalLoss()
-    # loss_fn = nn.MSELoss()
+    loss_fn = nn.CrossEntropyLoss()
     
     # training
-    num_epochs = 100
-    trained_model = train_model(model, optimizer, loss_fn, dataloader_train, dataloader_val, num_epochs)
+    trained_model = train_model(model, optimizer, loss_fn, dataloader_train, dataloader_val, cfg.num_epochs)

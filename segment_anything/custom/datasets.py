@@ -42,6 +42,7 @@ class Preprocessor(object):
 
 class JsonDataset(Dataset):
     def __init__(self, json_file, image_data_root, img_size=None, device='cpu'):
+        self.device = device
         self.data = mt.DataManager.load(json_file)
         self.image_data_root = image_data_root
         self.preprocessor = Preprocessor(img_size, device)
@@ -66,8 +67,8 @@ class JsonDataset(Dataset):
         image_tensor = self.preprocessor(image)
 
         # preprocess mask
-        mask = (self.preprocessor.image_resizer.apply_image(mask.astype('uint8')) > 0).astype('uint8')
-        mask_tensor = self.preprocessor.to_tensor(mask[...,None].astype('float32'))
+        mask_tensor = (self.preprocessor.image_resizer.apply_image(mask.astype('uint8')) > 0)
+        mask_tensor = torch.as_tensor(mask_tensor, dtype=torch.int64, device=self.device)
 
         return image_tensor, mask_tensor, image
 
