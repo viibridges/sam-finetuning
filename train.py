@@ -1,20 +1,41 @@
-from segment_anything import sam_model_registry
 import torch
+from sklearn.metrics import average_precision_score
+
 from segment_anything.custom.datasets import *
 from segment_anything.custom.losses import *
+from segment_anything import sam_model_registry
 
+
+def validate_model(model, val_dataloader):
+    model.eval()
+
+    aps = list()
+    with torch.no_grad():
+        for images, masks in mt.tqdm(val_dataloader):
+            image_embedding = model.image_encoder(images)
+            logits = model.mask_decoder(
+                image_embeddings=image_embedding,
+                original_size=images.shape[2:]
+            )
+            preds = torch.sigmoid(logits)
+
+            y_true = masks.view(-1).cpu().numpy()
+            y_pred = preds.view(-1).cpu().numpy()
+            ap = average_precision_score(y_true, y_pred)
+
+            aps.append(ap)
+
+    model.train()
+
+    return np.mean(aps)
 
 def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num_epochs):
-
+    best_metric = -np.Inf
     for epoch in range(num_epochs):
-
-        print('epoch {}/{}'.format(epoch+1,num_epochs))
-
+        ## training loop
         for iter, (images, gt_masks) in enumerate(train_dataloader):  
-
             with torch.no_grad():
                 image_embedding = model.image_encoder(images)
-
             pred_masks_logits = model.mask_decoder(
                 image_embeddings=image_embedding,
                 original_size=images.shape[2:]
@@ -26,10 +47,18 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num
             loss.backward()
             optimizer.step()
 
-            print('[{}/{}] loss: {}'.format(iter, len(train_dataloader), loss.item()))
+            if iter%10 == 0:
+                print('Epoch [{}/{}] Iter [{}/{}] loss: {}'.format(epoch+1, num_epochs,  iter, len(train_dataloader), loss.item()))
 
-        # torch.save(model.state_dict(), 'model_epoch_{}.pth'.format(epoch))
-        torch.save(model.state_dict(), 'model_latest.pth')
+        ## carriy out validation
+        metric = validate_model(model, val_dataloader)
+        print('epoch {}/{}\tValidation AP: {}'.format(epoch+1, num_epochs, metric))
+
+        ## save model
+        if metric > best_metric:
+            best_metric = metric
+            mt.os.makedirs('tmp/', exist_ok=True)
+            torch.save(model.state_dict(), 'tmp/model_latest.pth')
 
 
 if __name__ == '__main__':
@@ -62,8 +91,5 @@ if __name__ == '__main__':
     # loss_fn = nn.MSELoss()
     
     # training
-    num_epochs = 10
+    num_epochs = 100
     trained_model = train_model(model, optimizer, loss_fn, dataloader_train, dataloader_val, num_epochs)
-
-    # # Save model
-    # torch.save(trained_model, "./model.pt")
