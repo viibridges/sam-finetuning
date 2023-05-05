@@ -13,7 +13,7 @@ if __name__ == '__main__':
     image_size = 512
 
     model_type = 'vit_b'  # vit_b, vit_l, vit_h, ascend in size
-    checkpoint = 'model_latest.pth'
+    checkpoint = 'tmp/model_latest.pth'
 
     data_val  = JsonDataset(json_val, image_data_root, img_size=image_size, device=device)
     dataloader_val = torch.utils.data.DataLoader(data_val, batch_size=1, shuffle=False)
@@ -21,15 +21,16 @@ if __name__ == '__main__':
     # Set up model
     model = sam_model_registry[model_type](image_size=image_size, checkpoint=checkpoint, val=True, device=device).to(device)
 
-    for iter, (images, gt_masks) in enumerate(dataloader_val):  
+    for iter, (image, _, raw_image) in enumerate(dataloader_val):  
         with torch.no_grad():
-            image_embedding = model.image_encoder(images)
+            image_embedding = model.image_encoder(image)
 
-            pred_masks_logits = model.mask_decoder(
+            pred_mask_logits = model.mask_decoder(
                 image_embeddings=image_embedding,
-                original_size=images.shape[2:]
+                original_size=raw_image.shape[1:3]
             )
-            pred_masks = torch.sigmoid(pred_masks_logits)
-            pred_masks = np.squeeze(pred_masks.detach().cpu().numpy())
+            pred_mask = torch.sigmoid(pred_mask_logits)
+            pred_mask = np.squeeze(pred_mask.detach().cpu().numpy())
+            raw_image = np.squeeze(raw_image.detach().cpu().numpy()).astype('uint8')
 
-            mt.PIS(pred_masks, norm_float=False)
+            mt.PIS(raw_image, pred_mask, norm_float=False, share_xy=True)

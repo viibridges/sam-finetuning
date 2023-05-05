@@ -11,7 +11,7 @@ def validate_model(model, val_dataloader):
 
     aps = list()
     with torch.no_grad():
-        for images, masks in mt.tqdm(val_dataloader):
+        for images, masks, _ in mt.tqdm(val_dataloader):
             image_embedding = model.image_encoder(images)
             logits = model.mask_decoder(
                 image_embeddings=image_embedding,
@@ -33,7 +33,7 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num
     best_metric = -np.Inf
     for epoch in range(num_epochs):
         ## training loop
-        for iter, (images, gt_masks) in enumerate(train_dataloader):  
+        for iter, (images, gt_masks, _) in enumerate(train_dataloader):  
             with torch.no_grad():
                 image_embedding = model.image_encoder(images)
             pred_masks_logits = model.mask_decoder(

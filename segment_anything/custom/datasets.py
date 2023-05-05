@@ -69,7 +69,7 @@ class JsonDataset(Dataset):
         mask = (self.preprocessor.image_resizer.apply_image(mask.astype('uint8')) > 0).astype('uint8')
         mask_tensor = self.preprocessor.to_tensor(mask[...,None].astype('float32'))
 
-        return image_tensor, mask_tensor
+        return image_tensor, mask_tensor, image
 
 
 if __name__ == '__main__':
