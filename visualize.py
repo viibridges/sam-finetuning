@@ -9,8 +9,8 @@ if __name__ == '__main__':
     # setup parameters
     device = 'cuda:{}'.format(mt.get_single_gpu_id())
 
-    data_val  = JsonDataset(cfg.json_val, cfg.image_data_root, img_size=cfg.image_size, device=device)
-    dataloader_val = torch.utils.data.DataLoader(data_val, batch_size=1, shuffle=False)
+    data_test = JsonDataset(cfg.json_test, cfg.image_data_root, img_size=cfg.image_size, device=device)
+    dataloader_val = torch.utils.data.DataLoader(data_test, batch_size=1, shuffle=True)
 
     # Set up model
     model = sam_model_registry[cfg.model_type](

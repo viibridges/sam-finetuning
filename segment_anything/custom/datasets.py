@@ -68,7 +68,7 @@ class JsonDataset(Dataset):
 
         # preprocess mask
         mask_tensor = (self.preprocessor.image_resizer.apply_image(mask.astype('uint8')) > 0)
-        mask_tensor = torch.as_tensor(mask_tensor, dtype=torch.int64, device=self.device)
+        mask_tensor = torch.as_tensor(mask_tensor, dtype=torch.long, device=self.device)
 
         return image_tensor, mask_tensor, image
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     image_data_root = '/workspace/dataSet/dataset/sam-finetuning/'
     json_path = mt.osp.join(image_data_root, 'val.json')
     dataset = JsonDataset(json_path, image_data_root, img_size=512)
-    for img, msk in dataset:
+    for img, msk, _ in dataset:
         mask = np.squeeze(msk.cpu().detach().numpy())
         imag = img.cpu().detach().numpy()
 

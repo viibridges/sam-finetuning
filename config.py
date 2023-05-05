@@ -4,7 +4,7 @@ class Config(object):
     image_data_root = '/workspace/dataSet/dataset/sam-finetuning/'
     json_train = mt.osp.join(image_data_root, 'train.json')
     json_val   = mt.osp.join(image_data_root, 'val.json')
-    json_test  = mt.osp.join(image_data_root, 'val.json')
+    json_test  = mt.osp.join(image_data_root, 'test.json')
 
     model_type = 'vit_b'  # vit_b, vit_l, vit_h, ascend in size
     checkpoint = mt.osp.join(image_data_root, 'checkpoints/sam_vit_b_01ec64.pth')

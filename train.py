@@ -43,16 +43,13 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num
                 image_embeddings=image_embedding,
                 original_size=images.shape[2:]
             )
-            pred_masks = F.softmax(pred_masks_logits, dim=1)
-
-            loss = loss_fn(pred_masks, gt_masks)
+            loss = loss_fn(pred_masks_logits, gt_masks)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            if iter%10 == 0:
-                print('Epoch [{}/{}] Iter [{}/{}] loss: {}'.format(epoch+1, num_epochs,  iter, len(train_dataloader), loss.item()))
+            print('Epoch [{}/{}] Iter [{}/{}] loss: {}'.format(epoch+1, num_epochs,  iter, len(train_dataloader), loss.item()))
 
         ## carriy out validation
         metric = validate_model(model, val_dataloader)
