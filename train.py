@@ -1,7 +1,7 @@
 from segment_anything import sam_model_registry
 import torch
-from utils.datasets import *
-from utils.losses import *
+from segment_anything.custom.datasets import *
+from segment_anything.custom.losses import *
 
 
 def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, num_epochs):

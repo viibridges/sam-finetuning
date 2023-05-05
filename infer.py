@@ -1,7 +1,7 @@
 from segment_anything import sam_model_registry
 import torch
-from utils.datasets import *
-from utils.losses import *
+from segment_anything.custom.datasets import *
+from segment_anything.custom.losses import *
 import mtutils as mt
 
 if __name__ == '__main__':
