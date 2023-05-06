@@ -22,7 +22,7 @@ def build_sam_vit_h(image_size=1024, checkpoint=None, val=False, device='cpu'):
         encoder_num_heads=16,
         encoder_global_attn_indexes=[7, 15, 23, 31],
         checkpoint=checkpoint,
-        val=False,
+        val=val,
         device='cpu'
     )
 
@@ -38,7 +38,7 @@ def build_sam_vit_l(image_size=1024, checkpoint=None, val=False, device='cpu'):
         encoder_num_heads=16,
         encoder_global_attn_indexes=[5, 11, 17, 23],
         checkpoint=checkpoint,
-        val=False,
+        val=val,
         device='cpu'
     )
 
