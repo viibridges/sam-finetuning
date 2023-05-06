@@ -6,7 +6,7 @@ if __name__ == '__main__':
     import sys
     sys.path.append('.')
 
-from segment_anything.utils.transforms import ResizeLongestSide
+from ..utils.transforms import ResizeLongestSide
 from torch.utils.data import Dataset
 
 import mtutils as mt
