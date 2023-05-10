@@ -127,14 +127,7 @@ def _build_sam(
         if val:
             sam.load_state_dict(state_dict)
         elif image_size == 1024:
-            new_state_dict = dict()
-            for name, weights in state_dict.items():
-                if name.startswith('mask_decoder'):
-                    print("Skip unmatched weights:", name)
-                    continue
-                else:
-                    new_state_dict[name] = weights
-            sam.load_state_dict(new_state_dict, strict=False)
+            sam.load_state_dict(state_dict, strict=False)
         else:
             new_state_dict = dict()
             for name, weights in state_dict.items():

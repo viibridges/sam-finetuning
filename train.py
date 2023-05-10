@@ -31,9 +31,15 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, cfg
                 )
 
             image_size = [model.image_encoder.img_size]*2
-            ng_masks_logits = model.postprocess_masks(pred_masks[:,0:1], image_size, image_size)
+
+            if cfg.sigmoid_out:
+                ng_masks = torch.sigmoid(pred_masks[:,0:1])
+            else:
+                ng_masks = pred_masks[:,0:1]
+
+            ng_masks_predit = model.postprocess_masks(ng_masks, image_size, image_size)
             ng_masks_target = torch.clamp(gt_masks, max=1).unsqueeze(1)
-            loss = loss_fn(ng_masks_logits, ng_masks_target)
+            loss = loss_fn(ng_masks_predit, ng_masks_target)
 
             optimizer.zero_grad()
             loss.backward()
