@@ -14,11 +14,26 @@ def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, cfg
         for iter, (images, gt_masks, _) in enumerate(train_dataloader):  
             with torch.no_grad():
                 image_embedding = model.image_encoder(images)
-            pred_masks_logits = model.mask_decoder(
+
+            low_res_mask = model.mask_encoder(image_embedding)
+
+            sparse_embeddings, dense_embeddings = model.prompt_encoder(
+                points = None,
+                boxes = None,
+                masks = low_res_mask,
+                )
+            pred_masks, pred_ious = model.mask_decoder(
                 image_embeddings=image_embedding,
-                original_size=images.shape[2:]
-            )
-            loss = loss_fn(pred_masks_logits, gt_masks)
+                image_pe=model.prompt_encoder.get_dense_pe(),
+                sparse_prompt_embeddings=sparse_embeddings,
+                dense_prompt_embeddings=dense_embeddings,
+                multimask_output=True,
+                )
+
+            image_size = [model.image_encoder.img_size]*2
+            ng_masks_logits = model.postprocess_masks(pred_masks[:,0:1], image_size, image_size)
+            ng_masks_target = torch.clamp(gt_masks, max=1).unsqueeze(1)
+            loss = loss_fn(ng_masks_logits, ng_masks_target)
 
             optimizer.zero_grad()
             loss.backward()
@@ -49,10 +64,10 @@ if __name__ == '__main__':
     model = sam_model_registry[cfg.model_type](image_size=cfg.image_size, checkpoint=cfg.checkpoint, val=False).to(device)
 
     # create optimizer
-    optimizer = torch.optim.Adam(model.mask_decoder.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.mask_encoder.parameters(), lr=1e-3)
 
     # loss function
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = focal_dice_loss
     
     # training
     trained_model = train_model(model, optimizer, loss_fn, dataloader_train, dataloader_val, cfg)

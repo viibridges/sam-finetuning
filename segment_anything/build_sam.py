@@ -10,8 +10,10 @@ from functools import partial
 
 from .modeling import ImageEncoderViT, PromptEncoder, Sam, TwoWayTransformer
 
-# from .modeling import MaskDecoder
-from .custom import MaskDecoder
+from .modeling import MaskDecoder
+# from .custom import MaskDecoder
+
+from .custom import MaskEncoder
 
 
 def build_sam_vit_h(image_size=1024, checkpoint=None, val=False, device='cpu'):
@@ -92,6 +94,7 @@ def _build_sam(
             window_size=14,
             out_chans=prompt_embed_dim,
         ),
+        mask_encoder=MaskEncoder(transformer_dim=prompt_embed_dim),
         prompt_encoder=PromptEncoder(
             embed_dim=prompt_embed_dim,
             image_embedding_size=(image_embedding_size, image_embedding_size),
@@ -99,7 +102,7 @@ def _build_sam(
             mask_in_chans=16,
         ),
         mask_decoder=MaskDecoder(
-            num_multimask_outputs=3,
+            num_multimask_outputs=3,  # allow 3 ambiguous mask outputs
             transformer=TwoWayTransformer(
                 depth=2,
                 embedding_dim=prompt_embed_dim,

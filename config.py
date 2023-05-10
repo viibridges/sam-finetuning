@@ -7,7 +7,7 @@ class ConfigBaseModel(object):
     json_test  = mt.osp.join(image_data_root, 'test.json')
 
     model_type = 'vit_b'  # vit_b, vit_l, vit_h, ascend in size
-    checkpoint = mt.osp.join(image_data_root, 'checkpoints/sam_vit_b_0b3195.pth')
+    checkpoint = mt.osp.join(image_data_root, 'checkpoints/sam_vit_b_01ec64.pth')
 
     image_size = 512
     batch_size = 64
@@ -26,4 +26,13 @@ class ConfigLargeModel(ConfigBaseModel):
     model_path = mt.osp.join(work_dir, 'latest.pth')
 
 
-cfg = ConfigBaseModel()
+class ConfigDebug(ConfigBaseModel):
+    image_data_root = '/workspace/dataSet/dataset/sam-finetuning/'
+    json_train = mt.osp.join(image_data_root, 'val.json')
+    json_test  = mt.osp.join(image_data_root, 'val.json')
+    batch_size = 2
+    work_dir = '/tmp/debug/'
+    model_path = mt.osp.join(work_dir, 'latest.pth')
+
+
+cfg = ConfigDebug()

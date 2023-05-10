@@ -14,6 +14,7 @@ from .image_encoder import ImageEncoderViT
 from .mask_decoder import MaskDecoder
 from .prompt_encoder import PromptEncoder
 
+from ..custom import MaskEncoder
 
 class Sam(nn.Module):
     mask_threshold: float = 0.0
@@ -22,6 +23,7 @@ class Sam(nn.Module):
     def __init__(
         self,
         image_encoder: ImageEncoderViT,
+        mask_encoder: MaskEncoder,
         prompt_encoder: PromptEncoder,
         mask_decoder: MaskDecoder,
         pixel_mean: List[float] = [123.675, 116.28, 103.53],
@@ -43,6 +45,7 @@ class Sam(nn.Module):
         self.image_encoder = image_encoder
         self.prompt_encoder = prompt_encoder
         self.mask_decoder = mask_decoder
+        self.mask_encoder = mask_encoder
         self.register_buffer("pixel_mean", torch.Tensor(pixel_mean).view(-1, 1, 1), False)
         self.register_buffer("pixel_std", torch.Tensor(pixel_std).view(-1, 1, 1), False)
 
