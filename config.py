@@ -41,4 +41,10 @@ class ConfigSigmoidOut(ConfigBaseModel):
     model_path = mt.osp.join(work_dir, 'latest.pth')
 
 
-cfg = ConfigSigmoidOut()
+class ConfigLargeSigmoid(ConfigLargeSize):
+    sigmoid_out = True
+    work_dir = 'tmp/large-sigmoid/'
+    model_path = mt.osp.join(work_dir, 'latest.pth')
+
+
+cfg = ConfigLargeSigmoid()
