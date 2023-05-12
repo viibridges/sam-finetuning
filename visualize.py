@@ -19,27 +19,22 @@ if __name__ == '__main__':
     for iter, (image, _, raw_image) in enumerate(dataloader_val):  
         with torch.no_grad():
             image_embedding = model.image_encoder(image)
-            low_res_mask = model.mask_encoder(image_embedding)
             sparse_embeddings, dense_embeddings = model.prompt_encoder(
                 points = None,
-                boxes = None,
-                masks = low_res_mask,
+                boxes  = None,
+                masks  = None,
                 )
             pred_masks, pred_ious = model.mask_decoder(
                 image_embeddings=image_embedding,
                 image_pe=model.prompt_encoder.get_dense_pe(),
                 sparse_prompt_embeddings=sparse_embeddings,
                 dense_prompt_embeddings=dense_embeddings,
-                multimask_output=True,
+                multimask_output=False,
                 )
 
             image_size = [model.image_encoder.img_size]*2
 
-            if cfg.sigmoid_out:
-                ng_masks = torch.sigmoid(pred_masks[:,0:1])
-            else:
-                ng_masks = pred_masks[:,0:1]
-
+            ng_masks = torch.sigmoid(pred_masks)
             ng_masks_predit = model.postprocess_masks(ng_masks, image_size, raw_image.shape[1:3])
 
             ng_mask = np.squeeze(ng_masks_predit.detach().cpu().numpy())

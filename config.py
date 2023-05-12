@@ -16,8 +16,6 @@ class ConfigBaseModel(object):
     work_dir = 'tmp/base/'
     model_path = mt.osp.join(work_dir, 'latest.pth')
 
-    sigmoid_out = False
-
 
 class ConfigLargeSize(ConfigBaseModel):
     image_size = 1024
@@ -35,16 +33,4 @@ class ConfigDebug(ConfigBaseModel):
     model_path = mt.osp.join(work_dir, 'latest.pth')
 
 
-class ConfigSigmoidOut(ConfigBaseModel):
-    sigmoid_out = True
-    work_dir = 'tmp/sigmoid-out/'
-    model_path = mt.osp.join(work_dir, 'latest.pth')
-
-
-class ConfigLargeSigmoid(ConfigLargeSize):
-    sigmoid_out = True
-    work_dir = 'tmp/large-sigmoid/'
-    model_path = mt.osp.join(work_dir, 'latest.pth')
-
-
-cfg = ConfigLargeSigmoid()
+cfg = ConfigBaseModel()

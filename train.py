@@ -7,39 +7,38 @@ from test import validate_model
 from config import cfg
 
 
-def train_model(model, optimizer, loss_fn, train_dataloader, val_dataloader, cfg):
+def train_model(model, train_dataloader, val_dataloader, cfg):
+    model.train()
+
+    # create optimizer
+    optimizer = torch.optim.Adam(model.mask_decoder.parameters(), lr=1e-3)
+
     best_metric = -np.Inf
     for epoch in range(cfg.num_epochs):
         ## training loop
         for iter, (images, gt_masks, _) in enumerate(train_dataloader):  
             with torch.no_grad():
                 image_embedding = model.image_encoder(images)
-
-            low_res_mask = model.mask_encoder(image_embedding)
-
-            sparse_embeddings, dense_embeddings = model.prompt_encoder(
-                points = None,
-                boxes = None,
-                masks = low_res_mask,
-                )
+                sparse_embeddings, dense_embeddings = model.prompt_encoder(
+                    points = None,
+                    boxes  = None,
+                    masks  = None,
+                    )
             pred_masks, pred_ious = model.mask_decoder(
                 image_embeddings=image_embedding,
                 image_pe=model.prompt_encoder.get_dense_pe(),
                 sparse_prompt_embeddings=sparse_embeddings,
                 dense_prompt_embeddings=dense_embeddings,
-                multimask_output=True,
+                multimask_output=False,
                 )
 
             image_size = [model.image_encoder.img_size]*2
 
-            if cfg.sigmoid_out:
-                ng_masks = torch.sigmoid(pred_masks[:,0:1])
-            else:
-                ng_masks = pred_masks[:,0:1]
+            ng_masks = torch.sigmoid(pred_masks)
 
             ng_masks_predit = model.postprocess_masks(ng_masks, image_size, image_size)
             ng_masks_target = torch.clamp(gt_masks, max=1).unsqueeze(1)
-            loss = loss_fn(ng_masks_predit, ng_masks_target)
+            loss = focal_dice_loss(ng_masks_predit, ng_masks_target)
 
             optimizer.zero_grad()
             loss.backward()
@@ -69,11 +68,5 @@ if __name__ == '__main__':
     # Set up model
     model = sam_model_registry[cfg.model_type](image_size=cfg.image_size, checkpoint=cfg.checkpoint, val=False).to(device)
 
-    # create optimizer
-    optimizer = torch.optim.Adam(model.mask_encoder.parameters(), lr=1e-3)
-
-    # loss function
-    loss_fn = focal_dice_loss
-    
     # training
-    trained_model = train_model(model, optimizer, loss_fn, dataloader_train, dataloader_val, cfg)
+    trained_model = train_model(model, dataloader_train, dataloader_val, cfg)
