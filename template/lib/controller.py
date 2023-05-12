@@ -1,4 +1,3 @@
-import torch.nn.functional as F
 from .segment_anything.custom.datasets import *
 from .segment_anything import sam_model_registry
 from .config import cfg
@@ -22,22 +21,30 @@ class Controller(object):
         original_size = image.shape[:2]
         image_tensor = self.preprocessor(image)[None,...]
 
-        # prediction
         image_embedding = self.model.image_encoder(image_tensor)
-        logits = self.model.mask_decoder(
+        sparse_embeddings, dense_embeddings = self.model.prompt_encoder(
+            points = None,
+            boxes  = None,
+            masks  = None,
+            )
+        pred_masks, pred_ious = self.model.mask_decoder(
             image_embeddings=image_embedding,
-            original_size=original_size
-        )
-        preds = F.softmax(logits, dim=1)
-        preds = preds.detach().cpu().numpy()[0]
-        ng_mask = 1. - preds[0,:,:]
-        id_mask = np.argmax(preds, axis=0)
+            image_pe=self.model.prompt_encoder.get_dense_pe(),
+            sparse_prompt_embeddings=sparse_embeddings,
+            dense_prompt_embeddings=dense_embeddings,
+            multimask_output=False,
+            )
 
-        bboxes = mt.get_xyxys_from_mask(id_mask)
+        image_size = [self.model.image_encoder.img_size]*2
+
+        pred_masks = torch.sigmoid(pred_masks)
+        ng_masks = self.model.postprocess_masks(pred_masks, image_size, original_size)
+
+        ng_heatmap = np.squeeze(ng_masks.detach().cpu().numpy())
+        bboxes = mt.get_xyxys_from_mask(ng_heatmap > .5)
 
         results = {
-            'ng_mask': ng_mask,
-            'seg_map': id_mask,
+            'ng_heatmap': ng_heatmap,
             'bboxes': bboxes,
         }
 
