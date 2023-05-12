@@ -13,8 +13,6 @@ from .modeling import ImageEncoderViT, PromptEncoder, Sam, TwoWayTransformer
 from .modeling import MaskDecoder
 # from .custom import MaskDecoder
 
-from .custom import MaskEncoder
-
 
 def build_sam_vit_h(image_size=1024, checkpoint=None, val=False, device='cpu'):
     return _build_sam(
@@ -94,7 +92,6 @@ def _build_sam(
             window_size=14,
             out_chans=prompt_embed_dim,
         ),
-        mask_encoder=MaskEncoder(transformer_dim=prompt_embed_dim),
         prompt_encoder=PromptEncoder(
             embed_dim=prompt_embed_dim,
             image_embedding_size=(image_embedding_size, image_embedding_size),
@@ -124,17 +121,5 @@ def _build_sam(
     if checkpoint is not None:
         with open(checkpoint, "rb") as f:
             state_dict = torch.load(f, map_location=torch.device(device))
-        if val:
-            sam.load_state_dict(state_dict)
-        elif image_size == 1024:
-            sam.load_state_dict(state_dict, strict=False)
-        else:
-            new_state_dict = dict()
-            for name, weights in state_dict.items():
-                if name.startswith('image_encoder') and 'pos_' in name:
-                    print("Skip unmatched weights:", name)
-                    continue
-                else:
-                    new_state_dict[name] = weights
-            sam.load_state_dict(new_state_dict, strict=False)
+        sam.load_state_dict(state_dict)
     return sam

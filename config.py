@@ -33,4 +33,4 @@ class ConfigDebug(ConfigBaseModel):
     model_path = mt.osp.join(work_dir, 'latest.pth')
 
 
-cfg = ConfigLargeSize()
+cfg = ConfigBaseModel()

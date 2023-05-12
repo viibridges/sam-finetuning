@@ -54,6 +54,8 @@ class ImageEncoderViT(nn.Module):
         """
         super().__init__()
         self.img_size = img_size
+        self.patch_size = patch_size
+        self.model_img_size = 1024  # in which image size the original model was trained
 
         self.patch_embed = PatchEmbed(
             kernel_size=(patch_size, patch_size),
@@ -65,8 +67,9 @@ class ImageEncoderViT(nn.Module):
         self.pos_embed: Optional[nn.Parameter] = None
         if use_abs_pos:
             # Initialize absolute positional embedding with pretrain image size.
+            assert img_size < self.model_img_size
             self.pos_embed = nn.Parameter(
-                torch.zeros(1, img_size // patch_size, img_size // patch_size, embed_dim)
+                torch.zeros(1, self.model_img_size // patch_size, self.model_img_size // patch_size, embed_dim)
             )
 
         self.blocks = nn.ModuleList()
@@ -81,7 +84,7 @@ class ImageEncoderViT(nn.Module):
                 use_rel_pos=use_rel_pos,
                 rel_pos_zero_init=rel_pos_zero_init,
                 window_size=window_size if i not in global_attn_indexes else 0,
-                input_size=(img_size // patch_size, img_size // patch_size),
+                input_size=(self.model_img_size // patch_size, self.model_img_size // patch_size),
             )
             self.blocks.append(block)
 
@@ -106,7 +109,9 @@ class ImageEncoderViT(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.patch_embed(x)
         if self.pos_embed is not None:
-            x = x + self.pos_embed
+            pos_embed_size = self.img_size // self.patch_size
+            pos_embed_cropped = self.pos_embed[:,:pos_embed_size, :pos_embed_size, :]
+            x = x + pos_embed_cropped
 
         for blk in self.blocks:
             x = blk(x)
