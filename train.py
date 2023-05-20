@@ -1,6 +1,5 @@
 import torch
 from segment_anything.custom.datasets import *
-from segment_anything.custom.losses import *
 from segment_anything import sam_model_registry
 
 from test import validate_model
@@ -36,7 +35,7 @@ def train_model(model, train_dataloader, val_dataloader, cfg):
     
             ng_masks_predit = model.postprocess_masks(pred_masks, image_size, image_size)
             ng_masks_target = torch.clamp(gt_masks, max=1).unsqueeze(1).float()
-            loss = mixed_loss(ng_masks_predit, ng_masks_target)
+            loss = cfg.loss_func(ng_masks_predit, ng_masks_target)
 
             optimizer.zero_grad()
             loss.backward()

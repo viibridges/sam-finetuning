@@ -1,4 +1,5 @@
 import mtutils as mt
+from segment_anything.custom.losses import *
 
 class ConfigBaseModel(object):
     image_data_root = '/workspace/dataSet/dataset/sam-finetuning/'
@@ -15,6 +16,8 @@ class ConfigBaseModel(object):
 
     work_dir = 'tmp/base/'
     model_path = mt.osp.join(work_dir, 'latest.pth')
+
+    loss_func = mixed_loss
 
 
 class ConfigLargeSize(ConfigBaseModel):
@@ -33,4 +36,10 @@ class ConfigDebug(ConfigBaseModel):
     model_path = mt.osp.join(work_dir, 'latest.pth')
 
 
-cfg = ConfigBaseModel()
+class ConfigProjectionLoss(ConfigBaseModel):
+    loss_func = ProjectionLoss()
+    work_dir = 'tmp/proj-loss/'
+    model_path = mt.osp.join(work_dir, 'latest.pth')
+
+
+cfg = ConfigProjectionLoss()
